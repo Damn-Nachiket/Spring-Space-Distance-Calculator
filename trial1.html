@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Coil Analyzer - Profile Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .upload-zone {
+            border: 4px dashed #667eea;
+            border-radius: 20px;
+            padding: 60px;
+            text-align: center;
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-zone:hover {
+            border-color: #764ba2;
+            transform: scale(1.01);
+        }
+        
+        .upload-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .spinner {
+            width: 70px;
+            height: 70px;
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .canvas-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .canvas-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            background: white;
+        }
+        
+        .profile-viz {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .metric-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+        
+        .details {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .spacing-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 30px auto;
+            display: block;
+        }
+        
+        .info-banner {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Spring Coil Analyzer</h1>
+        <p class="subtitle">Profile-Based Detection - Specialized for Helical Springs</p>
+        
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📸</div>
+            <h2>Upload Spring Image</h2>
+            <p style="margin-top: 10px; color: #666;">Works best with side-view images</p>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+        
+        <div class="results" id="results">
+            <h2 style="text-align: center; color: #333; margin-bottom: 20px;">📊 Analysis Results</h2>
+            
+            <div id="infoBanner"></div>
+            
+            <div class="canvas-grid">
+                <div class="canvas-box">
+                    <h3>📷 Original Image</h3>
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+                <div class="canvas-box">
+                    <h3>📊 Brightness Profile</h3>
+                    <canvas id="profileCanvas"></canvas>
+                </div>
+                <div class="canvas-box">
+                    <h3>🎯 Detected Coils</h3>
+                    <canvas id="resultCanvas"></canvas>
+                </div>
+            </div>
+            
+            <div class="metrics" id="metrics"></div>
+            
+            <div class="details">
+                <h3>📏 Coil Spacing Details</h3>
+                <div id="spacingDetails"></div>
+            </div>
+            
+            <button class="btn" onclick="reset()">🔄 Analyze Another Spring</button>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Analyzing Spring Profile...</div>
+    </div>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const imageInput = document.getElementById('imageInput');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        
+        let img = null;
+        
+        uploadZone.onclick = () => imageInput.click();
+        
+        imageInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loading.style.display = 'flex';
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    img = new Image();
+                    img.onload = () => {
+                        setTimeout(() => {
+                            analyze();
+                            loading.style.display = 'none';
+                            results.style.display = 'block';
+                            results.scrollIntoView({ behavior: 'smooth' });
+                        }, 800);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        
+        function analyze() {
+            const oc = document.getElementById('originalCanvas');
+            const pc = document.getElementById('profileCanvas');
+            const rc = document.getElementById('resultCanvas');
+            
+            const scale = Math.min(500 / img.width, 1);
+            const w = Math.floor(img.width * scale);
+            const h = Math.floor(img.height * scale);
+            
+            oc.width = rc.width = w;
+            oc.height = rc.height = h;
+            pc.width = 400;
+            pc.height = h;
+            
+            const ctx1 = oc.getContext('2d');
+            const ctx2 = pc.getContext('2d');
+            const ctx3 = rc.getContext('2d');
+            
+            ctx1.drawImage(img, 0, 0, w, h);
+            ctx3.drawImage(img, 0, 0, w, h);
+            
+            const imgData = ctx1.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            
+            // Convert to grayscale
+            const gray = new Uint8Array(w * h);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            }
+            
+            // PROFILE-BASED DETECTION
+            // Sample multiple vertical columns and average them
+            const cx = Math.floor(w / 2);
+            const sampleWidth = Math.floor(w * 0.4);
+            const startX = cx - Math.floor(sampleWidth / 2);
+            
+            // Get brightness profile (average across center columns)
+            const profile = new Array(h).fill(0);
+            for (let y = 0; y < h; y++) {
+                let sum = 0;
+                for (let x = startX; x < startX + sampleWidth; x++) {
+                    sum += gray[y * w + x];
+                }
+                profile[y] = sum / sampleWidth;
+            }
+            
+            // Smooth the profile
+            const smoothed = [];
+            const windowSize = Math.max(3, Math.floor(h * 0.02));
+            for (let i = 0; i < profile.length; i++) {
+                let sum = 0;
+                let count = 0;
+                for (let j = -windowSize; j <= windowSize; j++) {
+                    const idx = i + j;
+                    if (idx >= 0 && idx < profile.length) {
+                        sum += profile[idx];
+                        count++;
+                    }
+                }
+                smoothed[i] = sum / count;
+            }
+            
+            // Draw brightness profile
+            ctx2.fillStyle = '#f8f9fa';
+            ctx2.fillRect(0, 0, pc.width, pc.height);
+            ctx2.strokeStyle = '#667eea';
+            ctx2.lineWidth = 2;
+            ctx2.beginPath();
+            for (let y = 0; y < h; y++) {
+                const x = (smoothed[y] / 255) * (pc.width - 40) + 20;
+                if (y === 0) ctx2.moveTo(x, y);
+                else ctx2.lineTo(x, y);
+            }
+            ctx2.stroke();
+            
+            // Draw grid
+            ctx2.strokeStyle = '#ddd';
+            ctx2.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const x = 20 + (pc.width - 40) * i / 5;
+                ctx2.beginPath();
+                ctx2.moveTo(x, 0);
+                ctx2.lineTo(x, h);
+                ctx2.stroke();
+            }
+            
+            // Find local minima in brightness profile (dark bands = coils)
+            const coils = [];
+            const searchWindow = Math.floor(h * 0.08); // 8% of height
+            const edgeMargin = Math.floor(h * 0.08); // Ignore top/bottom 8%
+            
+            for (let y = edgeMargin; y < h - edgeMargin; y += searchWindow) {
+                let minVal = 255;
+                let minY = y;
+                
+                // Find minimum in this window
+                for (let dy = 0; dy < searchWindow && y + dy < h - edgeMargin; dy++) {
+                    if (smoothed[y + dy] < minVal) {
+                        minVal = smoothed[y + dy];
+                        minY = y + dy;
+                    }
+                }
+                
+                // Check if this minimum is significant
+                const avgBrightness = smoothed.reduce((a, b) => a + b) / smoothed.length;
+                const threshold = avgBrightness * 0.92; // 8% darker than average
+                
+                if (minVal < threshold) {
+                    // Check it's a local minimum (lower than neighbors)
+                    const prevVal = minY > 5 ? smoothed[minY - 5] : 255;
+                    const nextVal = minY < h - 5 ? smoothed[minY + 5] : 255;
+                    
+                    if (minVal < prevVal && minVal < nextVal) {
+                        coils.push({
+                            y: minY,
+                            brightness: minVal
+                        });
+                    }
+                }
+            }
+            
+            // Remove duplicates (coils too close together)
+            const minGap = Math.floor(h * 0.06);
+            const filtered = [];
+            coils.sort((a, b) => a.y - b.y);
+            
+            for (let coil of coils) {
+                if (filtered.length === 0 || coil.y - filtered[filtered.length - 1].y > minGap) {
+                    filtered.push(coil);
+                }
+            }
+            
+            // Draw detected coils on profile
+            ctx2.fillStyle = '#00ff00';
+            ctx2.strokeStyle = '#00ff00';
+            ctx2.lineWidth = 2;
+            filtered.forEach((coil, i) => {
+                const x = (coil.brightness / 255) * (pc.width - 40) + 20;
+                ctx2.beginPath();
+                ctx2.arc(x, coil.y, 5, 0, Math.PI * 2);
+                ctx2.fill();
+                
+                ctx2.beginPath();
+                ctx2.moveTo(0, coil.y);
+                ctx2.lineTo(pc.width, coil.y);
+                ctx2.stroke();
+                
+                ctx2.fillStyle = '#000';
+                ctx2.font = 'bold 12px Arial';
+                ctx2.fillText(`#${i + 1}`, 5, coil.y - 8);
+                ctx2.fillStyle = '#00ff00';
+            });
+            
+            // Draw on result canvas
+            ctx3.strokeStyle = '#00ff00';
+            ctx3.lineWidth = 4;
+            ctx3.fillStyle = '#00ff00';
+            ctx3.font = 'bold 16px Arial';
+            ctx3.shadowColor = 'black';
+            ctx3.shadowBlur = 4;
+            
+            filtered.forEach((coil, i) => {
+                ctx3.beginPath();
+                ctx3.moveTo(0, coil.y);
+                ctx3.lineTo(w, coil.y);
+                ctx3.stroke();
+                
+                ctx3.fillText(`Coil ${i + 1}`, 10, coil.y - 10);
+            });
+            
+            ctx3.shadowBlur = 0;
+            
+            // Display results
+            displayResults(filtered, h);
+        }
+        
+        function displayResults(coils, imgHeight) {
+            const infoBanner = document.getElementById('infoBanner');
+            const metrics = document.getElementById('metrics');
+            const details = document.getElementById('spacingDetails');
+            
+            if (coils.length < 2) {
+                infoBanner.innerHTML = `
+                    <div class="info-banner">
+                        <h4>⚠️ Limited Detection</h4>
+                        <p>Only ${coils.length} coil(s) detected. This algorithm works best with:</p>
+                        <ul style="margin: 10px 0 0 20px;">
+                            <li>Side-view images showing coil profile</li>
+                            <li>Good contrast between coil wire and background/shaft</li>
+                            <li>At least 4-5 coils visible in image</li>
+                        </ul>
+                    </div>
+                `;
+                metrics.innerHTML = '';
+                details.innerHTML = '<p style="color: #666;">Need at least 2 coils for analysis</p>';
+                return;
+            }
+            
+            infoBanner.innerHTML = `
+                <div class="info-banner" style="background: #d4edda; border-color: #28a745;">
+                    <h4 style="color: #155724;">✅ Success!</h4>
+                    <p style="color: #155724;">Detected ${coils.length} coils using brightness profile analysis.</p>
+                </div>
+            `;
+            
+            const spacings = [];
+            for (let i = 1; i < coils.length; i++) {
+                spacings.push(coils[i].y - coils[i - 1].y);
+            }
+            
+            const avg = spacings.reduce((a, b) => a + b) / spacings.length;
+            const min = Math.min(...spacings);
+            const max = Math.max(...spacings);
+            const total = coils[coils.length - 1].y - coils[0].y;
+            const variance = spacings.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / spacings.length;
+            const consistency = Math.max(0, 100 - (Math.sqrt(variance) / avg * 100)).toFixed(0);
+            
+            metrics.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-label">Coils Detected</div>
+                    <div class="metric-value">${coils.length}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Spacing</div>
+                    <div class="metric-value">${avg.toFixed(1)}<span style="font-size: 0.4em;">px</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Min / Max</div>
+                    <div class="metric-value">${min.toFixed(0)} / ${max.toFixed(0)}<span style="font-size: 0.4em;">px</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Consistency</div>
+                    <div class="metric-value">${consistency}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Height</div>
+                    <div class="metric-value">${total.toFixed(0)}<span style="font-size: 0.4em;">px</span></div>
+                </div>
+            `;
+            
+            let html = '';
+            spacings.forEach((s, i) => {
+                const dev = ((s / avg - 1) * 100).toFixed(1);
+                html += `
+                    <div class="spacing-item">
+                        <span style="font-weight: 500;">Coil ${i + 1} → ${i + 2}</span>
+                        <span style="font-weight: bold;">${s.toFixed(1)} px 
+                            <span style="font-size: 0.9em; color: #666;">(${dev >= 0 ? '+' : ''}${dev}%)</span>
+                        </span>
+                    </div>
+                `;
+            });
+            details.innerHTML = html;
+        }
+        
+        function reset() {
+            results.style.display = 'none';
+            imageInput.value = '';
+            img = null;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
