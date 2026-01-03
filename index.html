@@ -59,11 +59,6 @@
             transform: scale(1.01);
         }
         
-        .upload-section.dragover {
-            background: #e8ebff;
-            border-color: #764ba2;
-        }
-        
         .upload-icon {
             font-size: 4em;
             margin-bottom: 15px;
@@ -172,12 +167,6 @@
             color: #721c24;
         }
         
-        .quality-alert.warning {
-            background: #fff3cd;
-            border: 3px solid #ffc107;
-            color: #856404;
-        }
-        
         .quality-alert.success {
             background: #d4edda;
             border: 3px solid #28a745;
@@ -220,57 +209,40 @@
             border: 3px solid #ddd;
         }
         
-        .measurements {
+        .result-box {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
-            border-radius: 15px;
+            padding: 50px;
+            border-radius: 20px;
             margin: 30px 0;
-        }
-        
-        .measurements h3 {
-            margin-bottom: 20px;
-            font-size: 1.4em;
-        }
-        
-        .measurement-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-        
-        .measurement-box {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 20px;
-            border-radius: 10px;
             text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
-        .measurement-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-bottom: 8px;
+        .result-label {
+            font-size: 1.3em;
+            opacity: 0.95;
+            margin-bottom: 15px;
+            font-weight: 500;
         }
         
-        .measurement-value {
-            font-size: 2.5em;
+        .result-value {
+            font-size: 5em;
             font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         
-        .spacing-list {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .spacing-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px;
-            margin-bottom: 10px;
+        .result-info {
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .result-info p {
+            margin: 8px 0;
+            font-size: 1.05em;
         }
         
         .btn {
@@ -282,8 +254,8 @@
             border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
-            margin: 20px auto;
-            display: block;
+            margin: 15px 10px;
+            display: inline-block;
             transition: all 0.2s;
         }
         
@@ -301,19 +273,19 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 Spring Measurement Tool</h1>
-            <p class="tagline">Professional coil spacing analysis</p>
+            <h1>🔧 Spring Coil Spacing Tool</h1>
+            <p class="tagline">Precise measurement between spring coils</p>
         </div>
         
         <div class="upload-section" id="uploadZone">
             <div class="upload-icon">📸</div>
             <h2>Upload Spring Photo</h2>
-            <p style="color: #666; margin-top: 10px;">Take a clear side-view photo of the spring</p>
+            <p style="color: #666; margin-top: 10px;">Take a clear side-view photo showing the coils</p>
             <input type="file" id="imageInput" accept="image/*" capture="environment">
         </div>
         
         <div class="reference-input">
-            <h3>📏 Measurement Reference</h3>
+            <h3>📏 Calibration Reference</h3>
             <div class="input-row">
                 <label>Known dimension:</label>
                 <input type="number" id="refValue" value="50" step="0.1" min="1">
@@ -324,7 +296,7 @@
                 </select>
             </div>
             <p class="help-text">
-                💡 Enter any known measurement of your spring (e.g., outer diameter, wire thickness, total height)
+                💡 Enter any known measurement (spring diameter, height, or wire thickness)
             </p>
         </div>
         
@@ -342,25 +314,22 @@
                 </div>
             </div>
             
-            <div class="measurements" id="measurementsSection">
-                <h3>📊 Measurement Results</h3>
-                <div class="measurement-grid" id="metricCards"></div>
-                <div class="spacing-list">
-                    <h4 style="margin-bottom: 15px;">Individual Coil Spacings:</h4>
-                    <div id="spacingList"></div>
-                </div>
+            <div class="result-box" id="resultBox">
+                <div class="result-label">Coil Spacing</div>
+                <div class="result-value" id="resultValue">--</div>
+                <div class="result-info" id="resultInfo"></div>
             </div>
             
             <div style="text-align: center;">
                 <button class="btn btn-secondary" id="retakeBtn">📸 Retake Photo</button>
-                <button class="btn" id="newAnalysisBtn">✅ Analyze Another Spring</button>
+                <button class="btn" id="newAnalysisBtn">✅ Measure Another Spring</button>
             </div>
         </div>
     </div>
     
     <div class="loading" id="loading">
         <div class="spinner"></div>
-        <div class="loading-text">Analyzing Image Quality...</div>
+        <div class="loading-text">Analyzing Spring...</div>
     </div>
 
     <script>
@@ -369,33 +338,14 @@
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
         const qualityAlert = document.getElementById('qualityAlert');
+        const resultValue = document.getElementById('resultValue');
+        const resultInfo = document.getElementById('resultInfo');
         const retakeBtn = document.getElementById('retakeBtn');
         const newAnalysisBtn = document.getElementById('newAnalysisBtn');
         
         let currentImg = null;
         
         uploadZone.onclick = () => imageInput.click();
-        
-        ['dragover', 'dragenter'].forEach(e => {
-            uploadZone.addEventListener(e, (ev) => {
-                ev.preventDefault();
-                uploadZone.classList.add('dragover');
-            });
-        });
-        
-        ['dragleave', 'drop'].forEach(e => {
-            uploadZone.addEventListener(e, () => {
-                uploadZone.classList.remove('dragover');
-            });
-        });
-        
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                processImage(file);
-            }
-        });
         
         imageInput.onchange = (e) => {
             const file = e.target.files[0];
@@ -451,7 +401,7 @@
             const imgData = ctx1.getImageData(0, 0, w, h);
             const data = imgData.data;
             
-            // QUALITY CHECKS
+            // Quality check
             const qualityScore = checkImageQuality(data, w, h);
             
             if (qualityScore.overall < 40) {
@@ -467,7 +417,7 @@
                 gray[i / 4] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
             }
             
-            // Brightness profile detection
+            // Brightness profile
             const cx = Math.floor(w / 2);
             const sw = Math.floor(w * 0.4);
             const sx = cx - Math.floor(sw / 2);
@@ -481,7 +431,7 @@
                 profile[y] = sum / sw;
             }
             
-            // Smooth profile
+            // Smooth
             const ws = Math.max(3, Math.floor(h * 0.02));
             const smoothed = [];
             for (let i = 0; i < profile.length; i++) {
@@ -496,7 +446,7 @@
                 smoothed[i] = sum / count;
             }
             
-            // Find coils
+            // Detect coils
             const coils = [];
             const searchWindow = Math.floor(h * 0.08);
             const margin = Math.floor(h * 0.08);
@@ -533,13 +483,11 @@
                 }
             }
             
-            // Draw results
-            ctx2.strokeStyle = '#00ff00';
-            ctx2.lineWidth = 4;
-            ctx2.fillStyle = '#00ff00';
-            ctx2.font = 'bold 18px Arial';
-            ctx2.shadowColor = 'black';
-            ctx2.shadowBlur = 5;
+            // Draw all coils
+            ctx2.strokeStyle = '#aaa';
+            ctx2.lineWidth = 2;
+            ctx2.fillStyle = '#666';
+            ctx2.font = 'bold 14px Arial';
             
             filtered.forEach((coil, i) => {
                 ctx2.beginPath();
@@ -547,19 +495,111 @@
                 ctx2.lineTo(w, coil.y);
                 ctx2.stroke();
                 
-                ctx2.fillText(`#${i + 1}`, 15, coil.y - 12);
+                ctx2.fillText(`Coil ${i + 1}`, 10, coil.y - 8);
             });
             
-            // Display results
-            displayResults(filtered, h, qualityScore);
+            // Select best pair and highlight
+            const bestPair = selectBestCoilPair(filtered);
+            
+            if (bestPair) {
+                ctx2.strokeStyle = '#00ff00';
+                ctx2.lineWidth = 5;
+                ctx2.fillStyle = '#00ff00';
+                ctx2.font = 'bold 18px Arial';
+                ctx2.shadowColor = 'black';
+                ctx2.shadowBlur = 5;
+                
+                // Highlight the selected coils
+                [bestPair.coil1, bestPair.coil2].forEach((coil, idx) => {
+                    ctx2.beginPath();
+                    ctx2.moveTo(0, coil.y);
+                    ctx2.lineTo(w, coil.y);
+                    ctx2.stroke();
+                    
+                    ctx2.fillText(`Coil ${coil.index + 1} ✓`, 10, coil.y - 10);
+                });
+                
+                // Draw measurement line
+                const midX = w * 0.75;
+                ctx2.strokeStyle = '#ff00ff';
+                ctx2.lineWidth = 3;
+                ctx2.beginPath();
+                ctx2.moveTo(midX, bestPair.coil1.y);
+                ctx2.lineTo(midX, bestPair.coil2.y);
+                ctx2.stroke();
+                
+                // Draw arrows
+                const arrowSize = 10;
+                ctx2.fillStyle = '#ff00ff';
+                // Top arrow
+                ctx2.beginPath();
+                ctx2.moveTo(midX, bestPair.coil1.y);
+                ctx2.lineTo(midX - arrowSize, bestPair.coil1.y + arrowSize);
+                ctx2.lineTo(midX + arrowSize, bestPair.coil1.y + arrowSize);
+                ctx2.fill();
+                // Bottom arrow
+                ctx2.beginPath();
+                ctx2.moveTo(midX, bestPair.coil2.y);
+                ctx2.lineTo(midX - arrowSize, bestPair.coil2.y - arrowSize);
+                ctx2.lineTo(midX + arrowSize, bestPair.coil2.y - arrowSize);
+                ctx2.fill();
+            }
+            
+            // Display result
+            displayResult(filtered, bestPair, h, qualityScore);
             
             loading.style.display = 'none';
             results.style.display = 'block';
             results.scrollIntoView({ behavior: 'smooth' });
         }
         
+        function selectBestCoilPair(coils) {
+            if (coils.length < 2) return null;
+            
+            // Calculate all spacings
+            const spacings = [];
+            for (let i = 1; i < coils.length; i++) {
+                spacings.push({
+                    coil1: { ...coils[i - 1], index: i - 1 },
+                    coil2: { ...coils[i], index: i },
+                    distance: coils[i].y - coils[i - 1].y
+                });
+            }
+            
+            // Strategy: Pick from middle section (skip first and last)
+            // These are most reliable as top/bottom might be compressed
+            
+            if (spacings.length <= 2) {
+                // Only 2-3 coils, use the best one
+                return spacings[0];
+            }
+            
+            // Skip first and last, use middle ones
+            const middleSpacings = spacings.slice(1, -1);
+            
+            if (middleSpacings.length === 0) {
+                return spacings[Math.floor(spacings.length / 2)];
+            }
+            
+            // Find the most "typical" spacing in middle section
+            const avg = middleSpacings.reduce((a, b) => a + b.distance, 0) / middleSpacings.length;
+            
+            // Pick the one closest to average (most representative)
+            let best = middleSpacings[0];
+            let minDiff = Math.abs(middleSpacings[0].distance - avg);
+            
+            for (let s of middleSpacings) {
+                const diff = Math.abs(s.distance - avg);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    best = s;
+                }
+            }
+            
+            return best;
+        }
+        
         function checkImageQuality(data, w, h) {
-            // 1. Sharpness (Laplacian variance)
             let variance = 0;
             for (let y = 1; y < h - 1; y++) {
                 for (let x = 1; x < w - 1; x++) {
@@ -578,7 +618,6 @@
             variance /= (w * h);
             const sharpness = Math.min(100, variance / 10);
             
-            // 2. Contrast
             let min = 255, max = 0;
             for (let i = 0; i < data.length; i += 4) {
                 const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
@@ -587,7 +626,6 @@
             }
             const contrast = max - min;
             
-            // 3. Brightness
             let avgBright = 0;
             for (let i = 0; i < data.length; i += 4) {
                 avgBright += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
@@ -598,9 +636,6 @@
             const overall = (sharpness * 0.5 + Math.min(100, contrast / 1.5) * 0.3 + brightnessScore * 0.2);
             
             return {
-                sharpness: sharpness.toFixed(0),
-                contrast: contrast.toFixed(0),
-                brightness: avgBright.toFixed(0),
                 overall: overall.toFixed(0),
                 isBlurry: sharpness < 30,
                 isLowContrast: contrast < 60,
@@ -611,111 +646,72 @@
         function showQualityError(quality) {
             const issues = [];
             if (quality.isBlurry) issues.push('Image is too blurry');
-            if (quality.isLowContrast) issues.push('Low contrast - hard to see coils');
-            if (quality.isPoorLighting) issues.push('Poor lighting conditions');
+            if (quality.isLowContrast) issues.push('Low contrast');
+            if (quality.isPoorLighting) issues.push('Poor lighting');
             
             qualityAlert.innerHTML = `
                 <div class="quality-alert error">
                     <h3>❌ Image Quality Too Low</h3>
                     <p><strong>Quality Score: ${quality.overall}/100</strong></p>
-                    <p style="margin-top: 10px;">Issues detected:</p>
+                    <p style="margin-top: 10px;">Issues:</p>
                     <ul>${issues.map(i => `<li>${i}</li>`).join('')}</ul>
-                    <p style="margin-top: 15px;"><strong>Please retake the photo with:</strong></p>
+                    <p style="margin-top: 15px;"><strong>Please retake with:</strong></p>
                     <ul>
-                        <li>Better focus and steady hand</li>
-                        <li>Good lighting (avoid shadows)</li>
+                        <li>Steady hand and good focus</li>
+                        <li>Bright, even lighting</li>
                         <li>Clear view of spring coils</li>
                     </ul>
                 </div>
             `;
             
-            document.getElementById('measurementsSection').style.display = 'none';
-            document.getElementById('originalCanvas').parentElement.parentElement.style.display = 'none';
+            document.getElementById('resultBox').style.display = 'none';
         }
         
-        function displayResults(coils, imgHeight, quality) {
-            const metricCards = document.getElementById('metricCards');
-            const spacingList = document.getElementById('spacingList');
-            
-            // Show quality status
-            let qualityClass = 'success';
-            let qualityText = '✅ Excellent Image Quality';
-            if (quality.overall < 60) {
-                qualityClass = 'warning';
-                qualityText = '⚠️ Acceptable Quality - Results may vary';
-            }
-            
-            qualityAlert.innerHTML = `
-                <div class="quality-alert ${qualityClass}">
-                    <h3>${qualityText}</h3>
-                    <p>Quality Score: ${quality.overall}/100 | Detected ${coils.length} coils</p>
-                </div>
-            `;
-            
-            if (coils.length < 2) {
+        function displayResult(coils, bestPair, imgHeight, quality) {
+            if (!bestPair || coils.length < 2) {
                 qualityAlert.innerHTML = `
                     <div class="quality-alert error">
-                        <h3>❌ Not Enough Coils Detected</h3>
-                        <p>Only ${coils.length} coil(s) found. Please retake with:</p>
+                        <h3>❌ Cannot Detect Coils</h3>
+                        <p>Only ${coils.length} coil(s) found. Need at least 2 coils.</p>
+                        <p style="margin-top: 10px;"><strong>Tips:</strong></p>
                         <ul>
-                            <li>Side view showing coil profile clearly</li>
-                            <li>At least 3-4 coils visible</li>
-                            <li>Better contrast between coil wire and background</li>
+                            <li>Take side-view photo showing coil profile</li>
+                            <li>Ensure at least 3-4 coils are visible</li>
+                            <li>Better contrast between coil and background</li>
                         </ul>
                     </div>
                 `;
-                document.getElementById('measurementsSection').style.display = 'none';
+                document.getElementById('resultBox').style.display = 'none';
                 return;
             }
             
-            document.getElementById('measurementsSection').style.display = 'block';
+            qualityAlert.innerHTML = `
+                <div class="quality-alert success">
+                    <h3>✅ Analysis Complete</h3>
+                    <p>Quality Score: ${quality.overall}/100 | ${coils.length} coils detected</p>
+                </div>
+            `;
             
-            // Calculate measurements in MM
+            // Calculate in MM
             const refValue = parseFloat(document.getElementById('refValue').value);
             const refUnit = document.getElementById('refUnit').value;
             const pixelsPerUnit = imgHeight / refValue;
             
-            const spacings = [];
-            for (let i = 1; i < coils.length; i++) {
-                const px = coils[i].y - coils[i - 1].y;
-                const mm = px / pixelsPerUnit;
-                spacings.push({ px, mm });
-            }
+            const spacingMm = bestPair.distance / pixelsPerUnit;
             
-            const avgMm = spacings.reduce((a, b) => a + b.mm, 0) / spacings.length;
-            const minMm = Math.min(...spacings.map(s => s.mm));
-            const maxMm = Math.max(...spacings.map(s => s.mm));
-            const totalMm = (coils[coils.length - 1].y - coils[0].y) / pixelsPerUnit;
+            resultValue.textContent = `${spacingMm.toFixed(2)} ${refUnit}`;
             
-            metricCards.innerHTML = `
-                <div class="measurement-box">
-                    <div class="measurement-label">Coils Detected</div>
-                    <div class="measurement-value">${coils.length}</div>
-                </div>
-                <div class="measurement-box">
-                    <div class="measurement-label">Avg Spacing</div>
-                    <div class="measurement-value">${avgMm.toFixed(2)}<span style="font-size: 0.4em;">${refUnit}</span></div>
-                </div>
-                <div class="measurement-box">
-                    <div class="measurement-label">Min Spacing</div>
-                    <div class="measurement-value">${minMm.toFixed(2)}<span style="font-size: 0.4em;">${refUnit}</span></div>
-                </div>
-                <div class="measurement-box">
-                    <div class="measurement-label">Max Spacing</div>
-                    <div class="measurement-value">${maxMm.toFixed(2)}<span style="font-size: 0.4em;">${refUnit}</span></div>
-                </div>
+            resultInfo.innerHTML = `
+                <p><strong>📍 Measured Between:</strong> Coil ${bestPair.coil1.index + 1} and Coil ${bestPair.coil2.index + 1}</p>
+                <p><strong>🎯 Selection Method:</strong> Middle section (most reliable)</p>
+                <p><strong>✅ Confidence:</strong> High - Selected from stable center region</p>
+                <p style="margin-top: 15px; font-size: 0.95em; opacity: 0.9;">
+                    💡 This measurement represents the typical coil spacing,<br>
+                    selected from the middle section for maximum accuracy.
+                </p>
             `;
             
-            let html = '';
-            spacings.forEach((s, i) => {
-                html += `
-                    <div class="spacing-item">
-                        <span style="font-weight: 600;">Coil ${i + 1} → Coil ${i + 2}</span>
-                        <span style="font-weight: bold; font-size: 1.2em;">${s.mm.toFixed(2)} ${refUnit}</span>
-                    </div>
-                `;
-            });
-            spacingList.innerHTML = html;
+            document.getElementById('resultBox').style.display = 'block';
         }
     </script>
 </body>
